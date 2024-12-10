@@ -6,7 +6,13 @@ exports.index = (request, h) => {
   const { finished = null } = request.query;
   const { name = null } = request.query;
 
-  let data = books;
+  let data = Array.isArray(books)
+    ? books.map((book) => ({
+        id: book.id,
+        name: book.name,
+        publisher: book.publisher,
+      }))
+    : [];
 
   if (reading != null) {
     data = books.filter((book) => book.reading == Boolean(reading));
@@ -20,10 +26,14 @@ exports.index = (request, h) => {
     );
   }
 
-  return {
+  const response = h.response({
     status: "success",
-    data,
-  };
+    data: {
+      books: data,
+    },
+  });
+  response.code(200);
+  return response;
 };
 
 exports.show = (request, h) => {
@@ -31,10 +41,14 @@ exports.show = (request, h) => {
   const index = books.findIndex((book) => book.id === id);
 
   if (index !== -1) {
-    return {
+    const response = h.response({
       status: "success",
-      data: books[index],
-    };
+      data: {
+        book: books[index],
+      },
+    });
+    response.code(200);
+    return response;
   }
 
   const response = h.response({
@@ -53,13 +67,13 @@ exports.destroy = (request, h) => {
     books.splice(index, 1);
     return {
       status: "success",
-      data: null,
+      message: "Buku berhasil dihapus",
     };
   }
 
   const response = h.response({
     status: "fail",
-    message: "Buku tidak ditemukan",
+    message: "Buku gagal dihapus. Id tidak ditemukan",
   });
   response.code(404);
   return response;
@@ -77,12 +91,22 @@ exports.store = (request, h) => {
     reading,
   } = request.payload;
 
+  if (name == null) {
+    const response = h.response({
+      status: "fail",
+      message: "Gagal menambahkan buku. Mohon isi nama buku",
+    });
+    response.code(400);
+    return response;
+  }
+
   if (readPage > pageCount) {
     const response = h.response({
       status: "fail",
-      message: "readPage tidak boleh lebih dari pageCount",
+      message:
+        "Gagal menambahkan buku. readPage tidak boleh lebih besar dari pageCount",
     });
-    response.code(500);
+    response.code(400);
     return response;
   }
 
@@ -144,14 +168,25 @@ exports.update = (request, h) => {
     reading,
   } = request.payload;
 
+  if (name == null) {
+    const response = h.response({
+      status: "fail",
+      message: "Gagal memperbarui buku. Mohon isi nama buku",
+    });
+    response.code(400);
+    return response;
+  }
+
   if (readPage > pageCount) {
     const response = h.response({
       status: "fail",
-      message: "readPage tidak boleh lebih dari pageCount",
+      message:
+        "Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount",
     });
-    response.code(500);
+    response.code(400);
     return response;
   }
+
   const finished = pageCount === readPage ? true : false;
 
   const index = books.findIndex((book) => book.id === id);
